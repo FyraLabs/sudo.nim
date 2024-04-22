@@ -23,4 +23,5 @@ discard sudo()
 
 # or…
 discard sudo(["QT_"])  # this exports environment variables that start with QT_
+discard sudo((k, _) => k.startsWith("QT_"))  # equivalent to above
 ```

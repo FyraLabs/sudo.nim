@@ -1,11 +1,10 @@
-## # sudo
-##
 ## Detect if you are running as root, restart self with sudo if needed or setup uid zero when running with the SUID flag set.
 ##
 ## ## Requirements
 ## - The `sudo` program is required to be installed and setup correctly on the target system.
-#
-# ♥ Idea from https://gitlab.com/dns2utf8/sudo.rs
+##
+## ## Thanks
+## ♥ Idea from https://gitlab.com/dns2utf8/sudo.rs
 import sweet, sugar, results, posix, std/[cmdline, os, osproc, strutils]
 
 export results
@@ -17,28 +16,41 @@ type R = Result[RunningAs, string]
 
 
 proc sudo_check*(): RunningAs =
-  ## Check `getuid()` and `geteuid()` to learn about the configuration this program is running under.
+  ## Check `posix.getuid()` and `posix.geteuid()` to learn about the process configuration.
   if !geteuid():
     if !getuid(): return raRoot
     return raSuid
   return raUser
 
-proc sudo*(prefixes: openArray[string] = []): R =
+proc sudo*(filter: (string, string) -> bool): R =
   ## Escalate program priviledge using `sudo` as needed.
-  ## Explicitly exports environment variables that start with strings listed in param `prefixes`.
+  ## Explicitly exports environment variables for `filter(key, value) == true`.
   ##
-  ## ## Examples
+  ## **Parameters**
+  ## 
+  ## - `filter: proc (key, value: string): bool`
+  ##   When returns true, the key-value pair environment variable in concern will be propagated.
+  ## - `prefixes: openArray[string] = []`
+  ##   All envionment variables pairs, with the name of the key that start with any strings in `prefixes`, will be propagated.
+  ##
+  ## **Return**
+  ## 
+  ## - if priviledge escalation is unnecessary for the current process: `results.Result[RunningAs, string]`
+  ## - if priviledge escalation is performed: does not return and `quit()` with exit code of `sudo`
+  ##
+  ## **Examples**
   ##
   ## ```nim
-  ## import sudo
+  ## import sudo, sugar
   ## discard sudo()
   ## # or…
-  ## discard sudo(["QT_"])  # this exports environment variables that start with QT_
+  ## discard sudo(["QT_"])  # exports envvars that start with QT_
+  ## discard sudo((k, _) => k.startsWith("QT_"))  # equivalent to above
   ## ```
   let current = sudo_check()
   case current
   of raRoot: return ok current
-  of raSuid: 
+  of raSuid:
     let res = setuid(0)
     if res != 0:
       return err "setuid(0) returned " & $res
@@ -49,15 +61,19 @@ proc sudo*(prefixes: openArray[string] = []): R =
   let params = commandLineParams() # argv excluding executable path
   let cmd = getAppFilename()
 
-  # propagate envvars with prefixes
+  # propagate envvars that satisfies filter()
   let envvars = collect:
     for (k, v) in envPairs():
-      var done = false
-      for prefix in prefixes:
-        if done: break
-        if k.startsWith(prefix):
-          done = true
-          k&"="&v
+      if filter(k, v): k&"="&v
 
-  let p = startProcess(sudo, args=envvars+cmd+params, options={poParentStreams})
+  let p = startProcess(sudo, args = envvars+cmd+params, options = {poParentStreams})
   quit p.waitForExit
+
+proc sudo*(prefixes: openArray[string] = []): R =
+  ## See documentations for `sudo(filter)`_.
+  proc match(k: string, _: string): bool =
+    for prefix in prefixes:
+      if k.startsWith prefix:
+        return true
+    return false
+  sudo(match)
