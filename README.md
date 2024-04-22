@@ -4,6 +4,7 @@ Detect if you are running as root, restart self with sudo if needed or setup uid
 
 - GitHub: https://github.com/FyraLabs/sudo.nim
 - Nimble: https://nimble.directory/pkg/sudo
+- Docs: https://fyralabs.github.io/sudo.nim/
 
 ## Installation
 

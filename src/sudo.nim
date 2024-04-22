@@ -1,5 +1,9 @@
 ## Detect if you are running as root, restart self with sudo if needed or setup uid zero when running with the SUID flag set.
 ##
+## - GitHub: https://github.com/FyraLabs/sudo.nim
+## - Nimble: https://nimble.directory/pkg/sudo
+## - Docs: https://fyralabs.github.io/sudo.nim/
+##
 ## ## Requirements
 ## - The `sudo` program is required to be installed and setup correctly on the target system.
 ##
